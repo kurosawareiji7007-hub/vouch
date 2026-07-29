@@ -196,8 +196,16 @@ def test_handler_bad_agent_is_invalid_request() -> None:
     assert resp["error"]["code"] == "invalid_request"
 
 
-def test_handler_returns_degraded_when_absent() -> None:
+def test_handler_returns_degraded_when_absent(
+    store: KBStore, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from vouch.jsonl_server import handle_request
+
+    # handle_request discovers the KB via cwd; point both agent search roots
+    # at empty dirs so the locator misses and returns the degraded payload.
+    monkeypatch.chdir(store.root)
+    monkeypatch.setenv("VOUCH_CLAUDE_PROJECTS_DIR", str(store.kb_dir / "no-claude"))
+    monkeypatch.setenv("CODEX_HOME", str(store.kb_dir / "no-codex"))
 
     resp = handle_request({
         "id": "3", "method": "kb.session_transcript",
