@@ -7,6 +7,11 @@ All notable changes to vouch are documented here. Format follows
 ## [Unreleased]
 
 ### Fixed
+- **config quoted `"false"` disables enrich / events / pages_first** (#620):
+  `#558` left three loaders on bare `bool()`, so a quoted `enabled: "false"`
+  left `capture.enrich` and `retrieval.events` on, and turned
+  `retrieval.pages_first` on. all three now use `coerce_bool` like the
+  other config loaders.
 - **vault sync mirrors post-approve WORKING/DRAFT artifacts** (#583):
   `kb_to_vault` now includes durable `WORKING` claims and `DRAFT` pages
   (the propose+approve defaults), so Obsidian mirrors fill without
