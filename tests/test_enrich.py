@@ -63,6 +63,15 @@ def test_enrich_config_reads_override(store: KBStore) -> None:
     assert cfg.timeout_seconds == 10.0
 
 
+def test_enrich_config_quoted_false_does_not_enable(store: KBStore) -> None:
+    """Regression (#558 residual): bool(\"false\") is True, so a quoted
+    enabled: \"false\" used to leave capture.enrich on."""
+    store.config_path.write_text(
+        'capture:\n  enrich:\n    enabled: "false"\n', encoding="utf-8"
+    )
+    assert load_enrich_config(store).enabled is False
+
+
 def test_enrich_config_malformed_yaml_falls_back(store: KBStore) -> None:
     store.config_path.write_text("capture:\n  enrich:\n  - nope\n", encoding="utf-8")
     assert load_enrich_config(store) == EnrichConfig()

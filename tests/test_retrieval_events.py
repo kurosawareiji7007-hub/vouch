@@ -44,6 +44,19 @@ def test_config_disable(store: KBStore) -> None:
     assert not (store.kb_dir / FILENAME).exists()
 
 
+def test_config_quoted_false_does_not_enable(store: KBStore) -> None:
+    """Regression (#558 residual): bool(\"false\") is True, so a quoted
+    enabled: \"false\" used to leave retrieval.events on."""
+    store.config_path.write_text(
+        'retrieval:\n  events:\n    enabled: "false"\n', encoding="utf-8"
+    )
+    assert load_events_config(store).enabled is False
+    assert log_event(
+        store, query="q", backend="fts5", limit=5, budget_chars=None, items=[],
+    ) is False
+    assert not (store.kb_dir / FILENAME).exists()
+
+
 def test_log_event_writes_masked_record(store: KBStore) -> None:
     tok = "ghp_" + "a" * 36  # same synthetic github-token shape test_secrets uses
     ok = log_event(

@@ -21,6 +21,7 @@ import yaml
 
 from . import graph, hot_memory, index_db, retrieval_events
 from . import strategy as strategy_mod
+from .config_coerce import coerce_bool
 from .embeddings.fusion import rrf_fuse
 from .models import (
     ClaimStatus,
@@ -244,7 +245,7 @@ def _configured_pages_first(store: KBStore) -> tuple[bool, float]:
         boost = 1.25
     if boost <= 0:
         boost = 1.25
-    return bool(raw.get("enabled", False)), boost
+    return coerce_bool(raw.get("enabled", False), False), boost
 
 
 def _maybe_pages_first(

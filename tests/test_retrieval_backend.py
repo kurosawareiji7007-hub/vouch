@@ -568,6 +568,23 @@ def test_pages_first_disabled_keeps_order(
     assert [item["id"] for item in pack["items"]] == ["c1", "p1"]
 
 
+def test_pages_first_quoted_false_does_not_enable(
+    page_claim_store: KBStore, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Regression (#558 residual): bool(\"false\") is True, so a quoted
+    pages_first.enabled: \"false\" used to turn the boost on."""
+    _page_and_claim_fts(monkeypatch)
+    _set_backend(page_claim_store, "hybrid")
+    page_claim_store.config_path.write_text(
+        'retrieval:\n  backend: hybrid\n  pages_first:\n    enabled: "false"\n'
+        "    boost: 5.0\n",
+        encoding="utf-8",
+    )
+    assert context._configured_pages_first(page_claim_store) == (False, 5.0)
+    pack = context.build_context_pack(page_claim_store, query="JWT", limit=2)
+    assert [item["id"] for item in pack["items"]] == ["c1", "p1"]
+
+
 def test_pages_first_never_boosts_session_pages(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

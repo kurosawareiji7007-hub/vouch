@@ -32,6 +32,7 @@ from typing import Any
 
 import yaml
 
+from .config_coerce import coerce_bool
 from .secrets import mask_secrets
 from .storage import KBStore
 
@@ -66,7 +67,7 @@ def load_events_config(store: KBStore) -> EventsConfig:
     except (TypeError, ValueError):
         max_bytes = DEFAULT_MAX_BYTES
     return EventsConfig(
-        enabled=bool(raw.get("enabled", DEFAULT_ENABLED)),
+        enabled=coerce_bool(raw.get("enabled", DEFAULT_ENABLED), DEFAULT_ENABLED),
         max_bytes=max_bytes,
     )
 

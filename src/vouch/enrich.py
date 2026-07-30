@@ -36,6 +36,7 @@ from typing import Any
 import yaml
 
 from . import llm_draft
+from .config_coerce import coerce_bool
 from .llm_draft import LLMDraftError
 from .storage import KBStore
 
@@ -108,7 +109,7 @@ def load_enrich_config(store: KBStore) -> EnrichConfig:
         return EnrichConfig()
     llm_cmd = raw.get("llm_cmd")
     return EnrichConfig(
-        enabled=bool(raw.get("enabled", True)),
+        enabled=coerce_bool(raw.get("enabled", True), True),
         llm_cmd=str(llm_cmd) if llm_cmd else None,
         timeout_seconds=_coerce(
             raw.get("timeout_seconds", DEFAULT_TIMEOUT_SECONDS),
