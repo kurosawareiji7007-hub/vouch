@@ -44,6 +44,16 @@ All notable changes to vouch are documented here. Format follows
   markers; absolute bench scores shift, paired comparisons were fair
   either way. the reference baseline table is refreshed.
 ### Changed
+- **CodeRabbit's verdict no longer gates anything.** the
+  `coderabbit-approved` commit status, the 3-strike auto-close, and the
+  daily stale-pr reaper are removed, along with the `coderabbit-gate` and
+  `stale-check` pr_bot commands that computed them. the status had
+  already been dropped from the `test` ruleset's required checks, so this
+  removes the machinery that outlived it rather than lowering a live bar.
+  CodeRabbit still reviews every non-draft pr and still files formal
+  approve / request-changes reviews — they are advisory now. the merge
+  path is ci + trust-gate + CODEOWNERS, with the owner's auto-merge label
+  as the go signal.
 - **auto approval is the default** (`review.approver_role: trusted-agent`
   in the starter config): a fresh KB approves the capturing agent's
   proposals with no human step. nothing bypasses the gate — every write
