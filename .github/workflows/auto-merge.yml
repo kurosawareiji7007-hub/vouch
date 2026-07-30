@@ -83,7 +83,30 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      checks: read
     steps:
+      # the coverage bar, read as metadata from ci's own run — never recomputed
+      # here, because that would mean executing PR code in a workflow that holds
+      # a write token. refuses to arm unless the `diff coverage` check passed on
+      # THIS head sha, so "fully covered" is a precondition of arming.
+      - name: require the diff-coverage check to have passed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          conclusion=$(gh api "repos/$REPO/commits/$HEAD_SHA/check-runs" --paginate \
+            --jq '[.check_runs[] | select(.name | startswith("diff coverage"))]
+                  | sort_by(.completed_at) | last | .conclusion' 2>/dev/null || true)
+          if [ "$conclusion" != "success" ]; then
+            echo "::error::diff coverage is not green on $HEAD_SHA (conclusion=${conclusion:-missing}); refusing to arm auto-merge"
+            gh pr edit "$PR" --repo "$REPO" --remove-label auto-merge || true
+            gh pr comment "$PR" --repo "$REPO" --body \
+              "auto-merge was not armed: the \`diff coverage\` check is not green on this head. every python line this PR changes under \`src/vouch/\` must be executed by a test. the bot has commented the uncovered lines; push tests and re-add the auto-merge label."
+            exit 1
+          fi
+
       - name: arm native auto-merge (non-core)
         env:
           GH_TOKEN: ${{ github.token }}

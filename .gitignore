@@ -6,6 +6,8 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .coverage
+# subprocess-spawning tests leave per-pid parallel data files behind
+.coverage.*
 coverage.xml
 htmlcov/
 bench.json

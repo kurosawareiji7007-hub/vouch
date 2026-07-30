@@ -225,6 +225,88 @@ def extract_changed_paths(files_json: str) -> list[str]:
     return paths
 
 
+# --- diff-coverage comment -------------------------------------------------
+
+# stable marker so the bot upserts one comment per PR instead of piling up.
+DIFF_COVERAGE_MARKER = "<!-- vouch-bot: diff-coverage -->"
+
+_DIFF_COVERAGE_MAX_FILES = 20
+_DIFF_COVERAGE_MAX_RANGES = 12
+
+
+def line_ranges(lines: Iterable[int]) -> list[tuple[int, int]]:
+    """Collapse sorted line numbers into inclusive (start, end) runs."""
+    out: list[tuple[int, int]] = []
+    for line in sorted(set(int(x) for x in lines)):
+        if out and line == out[-1][1] + 1:
+            out[-1] = (out[-1][0], line)
+        else:
+            out.append((line, line))
+    return out
+
+
+def format_ranges(ranges: Sequence[tuple[int, int]], *, limit: int) -> str:
+    shown = ranges[:limit]
+    text = ", ".join(
+        str(start) if start == end else f"{start}-{end}" for start, end in shown
+    )
+    if len(ranges) > limit:
+        text += f", +{len(ranges) - limit} more"
+    return text
+
+
+def diff_coverage_comment(report: Mapping[str, Any]) -> str:
+    """Render a diff-cover json report as the PR comment body.
+
+    Passing reports get a short resolved note so a stale failure comment is
+    replaced rather than left contradicting a green run.
+    """
+    violations = int(report.get("total_num_violations") or 0)
+    total = int(report.get("total_num_lines") or 0)
+    percent = report.get("total_percent_covered")
+    src_stats = report.get("src_stats") or {}
+
+    if not violations:
+        body = [
+            DIFF_COVERAGE_MARKER,
+            "**diff coverage: 100%** — every python line this PR changes under "
+            "`src/vouch/` is executed by a test.",
+        ]
+        if not total:
+            body[1] = (
+                "**diff coverage: n/a** — this PR changes no python under "
+                "`src/vouch/`, so there is nothing for the gate to measure."
+            )
+        return "\n\n".join(body)
+
+    pct = f"{float(percent):.0f}%" if percent is not None else "unknown"
+    lines = [
+        DIFF_COVERAGE_MARKER,
+        f"**diff coverage: {pct}** — {violations} of {total} changed "
+        f"python line(s) under `src/vouch/` are not executed by any test.",
+        "every line this PR adds or changes has to be covered before it can "
+        "merge. the uncovered lines:",
+    ]
+
+    paths = sorted(src_stats)
+    for path in paths[:_DIFF_COVERAGE_MAX_FILES]:
+        stats = src_stats.get(path) or {}
+        ranges = line_ranges(stats.get("violation_lines") or [])
+        if not ranges:
+            continue
+        where = format_ranges(ranges, limit=_DIFF_COVERAGE_MAX_RANGES)
+        lines.append(f"- `{path}` — line(s) {where}")
+    if len(paths) > _DIFF_COVERAGE_MAX_FILES:
+        lines.append(f"- …and {len(paths) - _DIFF_COVERAGE_MAX_FILES} more file(s)")
+
+    lines.append(
+        "reproduce locally: `pytest --cov=vouch --cov-report=xml` then "
+        "`diff-cover coverage.xml --compare-branch origin/test "
+        "--include 'src/vouch/*' --fail-under 100`."
+    )
+    return "\n\n".join(lines)
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="vouch.pr_bot")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -246,6 +328,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     s = sub.add_parser("has-screenshots")
     s.add_argument("--body-file", required=True)
+
+    dc = sub.add_parser("diff-coverage-comment")
+    dc.add_argument("--report-file", required=True)
 
     a = sub.add_parser("should-arm")
     a.add_argument("--files-file", required=True)
@@ -284,6 +369,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     if ns.cmd == "has-screenshots":
         with open(ns.body_file, encoding="utf-8") as fh:
             return 0 if has_before_after_screenshots(fh.read()) else 1
+    if ns.cmd == "diff-coverage-comment":
+        with open(ns.report_file, encoding="utf-8") as fh:
+            loaded = json.load(fh)
+        report = loaded if isinstance(loaded, dict) else {}
+        sys.stdout.write(diff_coverage_comment(report))
+        return 0
     if ns.cmd == "should-arm":
         c2 = classify(_read_lines(ns.files_file))
         ok = should_arm_automerge(is_core=c2["is_core"], ci_passing=ns.ci == "passing",

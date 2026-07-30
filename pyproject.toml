@@ -47,6 +47,15 @@ dev = [
     "httpx>=0.28,<1",
     # the wheel-contents regression test builds with the real backend
     "hatchling>=1.21",
+    # numpy alone unlocks tests/embeddings: MockEmbedder is a pure-python fake,
+    # so the vector paths are testable without torch/onnxruntime. without it
+    # `importorskip("numpy")` skipped ~470 statements of shipped code in every
+    # ci run, and nothing else in the repo installed it.
+    "numpy>=1.26,<3",
+    # the `diff coverage` ci gate: every python line a pr adds or changes under
+    # src/vouch must be executed by a test. repo-wide coverage is a ratchet
+    # (see [tool.coverage.report] fail_under); this is the per-pr bar.
+    "diff-cover>=9,<10",
 ]
 embeddings-fast = [
     "fastembed>=0.3,<1",
@@ -103,6 +112,39 @@ addopts = "-q -m 'not integration'"
 markers = [
     "integration: tests that load the real embedding model (slow, network on first run)",
 ]
+
+# coverage is measured by the ci `test` job (`pytest --cov=vouch`).
+#
+# `--cov=vouch` matches *every* importable copy of the package, and
+# test_wheel_contents installs the built wheel into a pytest temp dir. without
+# the omit below those 58 duplicate modules land in the report at ~0% and drag
+# the total from 85% to 43% -- the number ci has been uploading.
+[tool.coverage.run]
+omit = [
+    "*/pytest-of-*/*",
+    "*/test_installed_wheel_resolves_*/*",
+]
+
+# the exclusions below are constructs a unit test cannot execute by
+# construction -- type-checker-only imports and the `python -m` entrypoint
+# guards. they are not a place to park untested branches; an untested `except`
+# body stays a gap.
+#
+# `omit` is repeated here on purpose: the [run] copy governs collection, but
+# the temp-wheel modules still reach the data file, and only [report] omit
+# keeps them out of the totals.
+[tool.coverage.report]
+omit = [
+    "*/pytest-of-*/*",
+    "*/test_installed_wheel_resolves_*/*",
+]
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]
+show_missing = true
+# ratchet. raise it as gaps close, never lower it to make a red build green.
+fail_under = 90
 
 # numpy is an optional runtime dependency (pulled in by the [embeddings] or
 # [embeddings-fast] extras); the base CI install only has [dev], so mypy can't

@@ -96,6 +96,15 @@ def test_load_config_parses_block(store: KBStore) -> None:
     assert cfg.action == "reject"
 
 
+def test_load_config_preserves_zero_min_score(store: KBStore) -> None:
+    # a configured min_score of 0 is a distinct, meaningful setting — compute
+    # worthiness but never let the threshold defer a claim, unlike scorer: off
+    # which computes nothing. it must not be swallowed by the fallback and
+    # silently become DEFAULT_MIN_SCORE.
+    _write_worthiness_config(store, "  min_score: 0\n")
+    assert worthiness.load_config(store).min_score == 0.0
+
+
 def test_get_scorer_selects_backend(store: KBStore) -> None:
     default = worthiness.get_scorer(worthiness.WorthinessConfig())
     assert isinstance(default, worthiness.HeuristicScorer)

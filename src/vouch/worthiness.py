@@ -207,11 +207,15 @@ def load_config(store: KBStore) -> WorthinessConfig:
     apply_to = (
         frozenset(str(a) for a in apply_raw) if isinstance(apply_raw, list) else AUTO_CAPTURE_ACTORS
     )
+    # `or DEFAULT_MIN_SCORE` would swallow a legitimate configured 0.0 (an explicit
+    # "never defer") and rewrite it to the default; fall back only when the value is
+    # absent or unparseable.
+    parsed_min = _as_float(raw.get("min_score"))
     return WorthinessConfig(
         # YAML 1.1 parses a bare ``off`` as boolean False — coerce it back so
         # ``scorer: off`` disables scoring rather than becoming the string "False".
         scorer=_normalize_scorer(raw.get("scorer", DEFAULT_SCORER)),
-        min_score=_as_float(raw.get("min_score")) or DEFAULT_MIN_SCORE,
+        min_score=parsed_min if parsed_min is not None else DEFAULT_MIN_SCORE,
         action=str(raw.get("action", DEFAULT_ACTION)),
         apply_to=apply_to,
     )
