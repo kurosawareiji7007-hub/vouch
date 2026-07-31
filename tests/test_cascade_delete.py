@@ -133,6 +133,16 @@ def test_plan_and_apply_unlink_goal_cited_claims(store: KBStore) -> None:
     assert "goal.cascade_unlink" in _events(store)
 
 
+def test_plan_unlinks_goal_cited_entities(store: KBStore) -> None:
+    from vouch.models import Goal
+
+    store.put_entity(Entity(id="e1", name="E", type=EntityType.CONCEPT))
+    store.put_goal(Goal(id="track-e1", title="track e1", entities=["e1"]))
+    assert cascade_plan(store, "entity", "e1") == [
+        {"kind": "goal", "id": "track-e1", "unlink_entities": ["e1"]}
+    ]
+
+
 def test_plan_deletes_relations_and_unlinks_pages(store: KBStore) -> None:
     _claim(store, "c1")
     _claim(store, "c2")
@@ -363,6 +373,24 @@ def test_applier_skips_a_claim_already_unlinked(store: KBStore) -> None:
         actor="reviewer",
     ) == []
     assert "claim.cascade_unlink" not in _events(store)
+
+
+def test_applier_skips_a_goal_that_vanished(store: KBStore) -> None:
+    assert _apply_cascade(
+        store, [{"kind": "goal", "id": "gone", "unlink_claims": ["c1"]}],
+        actor="reviewer",
+    ) == []
+
+
+def test_applier_skips_a_goal_already_unlinked(store: KBStore) -> None:
+    from vouch.models import Goal
+
+    store.put_goal(Goal(id="g1", title="empty refs"))
+    assert _apply_cascade(
+        store, [{"kind": "goal", "id": "g1", "unlink_claims": ["c1"]}],
+        actor="reviewer",
+    ) == []
+    assert "goal.cascade_unlink" not in _events(store)
 
 
 def test_applier_skips_a_relation_that_vanished(store: KBStore) -> None:
