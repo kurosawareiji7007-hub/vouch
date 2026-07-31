@@ -75,6 +75,15 @@ def test_filter_numeric_bounds() -> None:
     assert [p.id for p in hits] == ["p5", "p30"]
 
 
+def test_filter_excludes_archived_by_default() -> None:
+    pages = [
+        _page("live"),
+        Page(id="dead", title="dead", type="concept", status=PageStatus.ARCHIVED),
+    ]
+    assert [p.id for p in filter_pages(pages)] == ["live"]
+    assert [p.id for p in filter_pages(pages, include_archived=True)] == ["live", "dead"]
+
+
 def test_parse_kv() -> None:
     assert parse_kv(("a=1", "b=x=y")) == {"a": "1", "b": "x=y"}
     with pytest.raises(ValueError):

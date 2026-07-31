@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .models import Page
+from .models import Page, PageStatus
 
 
 def filter_pages(
@@ -27,15 +27,21 @@ def filter_pages(
     equals: dict[str, str] | None = None,
     before: dict[str, str] | None = None,
     after: dict[str, str] | None = None,
+    include_archived: bool = False,
 ) -> list[Page]:
     """Return the pages matching every given predicate.
 
     kind: exact match on `Page.type`.
     equals: frontmatter field == value (string-compared).
     before / after: inclusive bounds — value <= / >= the given bound.
+    include_archived: when False (default), drop ``PageStatus.ARCHIVED``
+    pages so agent-facing listings (`kb.list_pages`, `vouch pages`) match
+    the live-set convention used by search/wiki/neighbors/digest (#728).
     """
     out: list[Page] = []
     for page in pages:
+        if not include_archived and page.status is PageStatus.ARCHIVED:
+            continue
         if kind is not None and page.type != kind:
             continue
         meta = page.metadata

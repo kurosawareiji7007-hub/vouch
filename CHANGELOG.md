@@ -155,6 +155,12 @@ All notable changes to vouch are documented here. Format follows
   artifact the caller could not already retrieve, and it touches no write path.
 
 ### Fixed
+- **`kb.list_pages` / `vouch pages` no longer list archived pages** (#728):
+  `filter_pages` (shared by MCP, JSONL, and the CLI) had no
+  `PageStatus.ARCHIVED` gate, so retired pages stayed in the agent-facing
+  live listing — and MCP/CLI payloads omit `status`, so an archived page
+  looked identical to a live one. Default is now live-set only
+  (`include_archived=False`); pass `include_archived=True` to opt back in.
 - **`extract` no longer fractures file paths/URLs into auto-approved
   garbage claims** (#702): the sentence segmenter only skipped a `.` as a
   boundary when it was flanked by digits on both sides (decimals/versions
