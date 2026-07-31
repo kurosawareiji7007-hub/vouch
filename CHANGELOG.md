@@ -45,6 +45,10 @@ All notable changes to vouch are documented here. Format follows
   artifact the caller could not already retrieve, and it touches no write path.
 
 ### Fixed
+- **theme dedupe ignores archived theme pages** (#704):
+  `_existing_theme_entity_sets` counted archived theme pages, so retiring a
+  theme permanently blocked re-propose for that entity set. Archived pages
+  are skipped; pending proposals and live themes unchanged.
 - **`vouch stats` / `kb.stats` no longer crash on one corrupt `decided/*.yaml`**:
   `_list_decided` parsed every decided proposal strictly, so a single bad file
   aborted `review_summary` / `collect_stats`. It now uses `_load_or_skip` —

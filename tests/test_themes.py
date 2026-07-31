@@ -125,6 +125,29 @@ def test_detect_themes_excludes_archived(store: KBStore) -> None:
     assert len(result.clusters) == 0
 
 
+def test_existing_theme_sets_ignore_archived_pages(store: KBStore) -> None:
+    """Archived theme pages must not block entity-set dedupe (#704)."""
+    from vouch.models import Page, PageStatus
+
+    store.put_page(Page(
+        id="theme-auth",
+        title="Auth Theme",
+        type="theme",
+        entities=["alpha", "beta"],
+        status=PageStatus.ARCHIVED,
+    ))
+    store.put_page(Page(
+        id="theme-live",
+        title="Live Theme",
+        type="theme",
+        entities=["gamma"],
+        status=PageStatus.ACTIVE,
+    ))
+    existing = themes._existing_theme_entity_sets(store)
+    assert frozenset({"alpha", "beta"}) not in existing
+    assert frozenset({"gamma"}) in existing
+
+
 def test_detect_themes_excludes_claims_the_viewer_cannot_see(
     store: KBStore,
 ) -> None:

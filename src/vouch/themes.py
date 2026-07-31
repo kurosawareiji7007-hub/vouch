@@ -17,7 +17,7 @@ from typing import Any
 import yaml
 
 from .config_coerce import coerce_bool
-from .models import ClaimStatus, ProposalStatus
+from .models import ClaimStatus, PageStatus, ProposalStatus
 from .proposals import ProposalError, propose_page
 from .scoping import ViewerContext, is_visible, viewer_from
 from .storage import KBStore
@@ -270,6 +270,9 @@ def _existing_theme_entity_sets(store: KBStore) -> set[frozenset[str]]:
     """Return entity sets of existing theme pages and pending theme proposals."""
     result: set[frozenset[str]] = set()
     for page in store.list_pages():
+        # archived themes stay on disk but must not block re-propose (#704)
+        if page.status is PageStatus.ARCHIVED:
+            continue
         if page.type == "theme" and page.entities:
             result.add(frozenset(page.entities))
     for prop in store.list_proposals(ProposalStatus.PENDING):
