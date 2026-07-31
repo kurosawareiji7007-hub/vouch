@@ -129,6 +129,13 @@ def test_existing_theme_sets_ignore_archived_pages(store: KBStore) -> None:
     """Archived theme pages must not block entity-set dedupe (#704)."""
     from vouch.models import Page, PageStatus
 
+    for name in ("alpha", "beta", "gamma"):
+        pr = propose_entity(
+            store, name=name, entity_type="concept",
+            proposed_by="setup", slug_hint=name,
+        )
+        approve(store, pr.id, approved_by="human")
+
     store.put_page(Page(
         id="theme-auth",
         title="Auth Theme",
