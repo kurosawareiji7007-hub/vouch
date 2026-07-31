@@ -31,7 +31,7 @@ from . import audit as audit_mod
 from . import llm_draft
 from .config_coerce import coerce_bool
 from .context import _RETRACTED_CLAIM_STATUSES
-from .models import ProposalStatus
+from .models import Page, PageStatus, ProposalStatus
 from .proposals import ProposalError, _slugify, propose_page
 from .storage import ArtifactNotFoundError, KBStore
 
@@ -203,6 +203,11 @@ def _pending_page_names(store: KBStore) -> set[str]:
     return names
 
 
+def _live_pages(store: KBStore) -> list[Page]:
+    """Pages in the live set — archived stay on disk but are not taken (#700)."""
+    return [p for p in store.list_pages() if p.status is not PageStatus.ARCHIVED]
+
+
 def build_topic_prompt(store: KBStore, *, max_pages: int) -> str:
     """Phase-A prompt: plan the durable topics before any page is drafted.
 
@@ -285,7 +290,9 @@ def build_prompt(
     ]
     if not claims:
         raise CompileError("nothing to compile: the KB has no live approved claims")
-    pages = store.list_pages()
+    # same live set as recall / wiki — archived pages stay on disk but must
+    # not block redraft under TAKEN TOPICS (#700).
+    pages = _live_pages(store)
     pending = _pending_page_names(store)
 
     lines = [
@@ -472,7 +479,7 @@ def compile_kb(
 
     report = CompileReport(drafts=drafts, dry_run=dry_run)
 
-    existing = store.list_pages()
+    existing = _live_pages(store)
     taken_names = {p.title.strip().lower() for p in existing}
     taken_names |= {p.id.strip().lower() for p in existing}
     taken_names |= _pending_page_names(store)

@@ -577,6 +577,51 @@ def test_build_prompt_requests_sections_summary_and_aliases(store: KBStore) -> N
     assert "section" in low or "##" in prompt
 
 
+def test_compile_excludes_archived_pages_from_taken_topics(
+    store: KBStore, tmp_path: Path,
+) -> None:
+    """Archived pages must not block TAKEN TOPICS or title collision (#700)."""
+    import sys
+
+    from vouch.models import Page, PageStatus
+
+    c1 = _approved_claim(store, "retries cap at three after archive of the old page")
+    store.put_page(Page(
+        id="retry-policy",
+        title="Retry Policy",
+        body="retired draft",
+        status=PageStatus.ARCHIVED,
+    ))
+    store.put_page(Page(
+        id="live-topic",
+        title="Live Topic",
+        body="still current",
+        status=PageStatus.ACTIVE,
+    ))
+
+    prompt = compile_mod.build_prompt(store, max_pages=3)
+    assert "retry-policy: Retry Policy" not in prompt
+    assert "live-topic: Live Topic" in prompt
+
+    out = tmp_path / "drafts.json"
+    out.write_text(json.dumps([
+        {
+            "title": "Retry Policy",
+            "type": "decision",
+            "body": f"Retries now cap at three [claim: {c1}].",
+            "claims": [c1],
+        },
+    ]), encoding="utf-8")
+    # python printer — portable on windows where `cat` is missing
+    cmd = (
+        f"{sys.executable} -c "
+        f"\"import pathlib; print(pathlib.Path(r'{out}').read_text(encoding='utf-8'))\""
+    )
+    report = compile_kb(store, config=_cfg(cmd))
+    assert [r["title"] for r in report.proposed] == ["Retry Policy"]
+    assert report.dropped == []
+
+
 def test_wikilink_to_existing_page_alias_resolves(
     store: KBStore, tmp_path: Path,
 ) -> None:
