@@ -403,6 +403,21 @@ def test_fsck_flags_delete_proposal_with_no_artifact_id(store: KBStore) -> None:
     assert "decided_no_artifact_id" in codes
 
 
+def test_fsck_flags_create_proposal_with_no_artifact_id(store: KBStore) -> None:
+    """Second-pass create/edit proposals also report a missing payload id."""
+    store.put_proposal(Proposal(
+        id="claim-no-id",
+        kind=ProposalKind.CLAIM,
+        proposed_by="agent",
+        payload={"text": "t", "evidence": ["e1"]},
+        status=ProposalStatus.APPROVED,
+    ))
+
+    report = health.fsck(store)
+    codes = {f.code for f in report.findings}
+    assert "decided_no_artifact_id" in codes
+
+
 def test_fsck_index_orphan_row(store: KBStore) -> None:
     """An FTS5 row with no on-disk claim is reported as an index orphan."""
     src = store.put_source(b"e")

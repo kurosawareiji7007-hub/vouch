@@ -572,20 +572,6 @@ def _check_decided_proposals(
                 )
             )
             continue
-        if pr.kind not in presence:
-            # Unreachable while the exhaustiveness assert holds; keep a
-            # Finding path so a runtime enum drift still reports cleanly
-            # instead of KeyError'ing the whole fsck.
-            findings.append(
-                Finding(
-                    "error",
-                    "decided_unknown_kind",
-                    f"approved proposal {pr.id} has unrecognized kind "
-                    f"{pr.kind.value!r}",
-                    [pr.id],
-                )
-            )
-            continue
         if artifact_id in deleted[pr.kind]:
             continue  # removed by a later, separately-verified delete proposal
         if artifact_id not in presence[pr.kind]:
