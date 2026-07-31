@@ -166,6 +166,25 @@ def _edge_tuples(edges) -> list[tuple]:
     )
 
 
+# --- archived pages stay out of the live graph ----------------------------
+
+
+def test_build_graph_excludes_archived_page_embeds(store: KBStore) -> None:
+    """Archived pages must not contribute EMBEDS edges (#701)."""
+    from vouch.provenance.model import EdgeKind
+
+    _seed(store)
+    page = store.get_page("page-alpha")
+    page.status = PageStatus.ARCHIVED
+    store.update_page(page)
+
+    g = prov.build_graph(store)
+    embed_srcs = {e.src_id for e in g.edges if e.kind is EdgeKind.EMBEDS}
+    assert "page-alpha" not in embed_srcs
+    assert "page-beta" in embed_srcs
+    assert "page-draft" in embed_srcs
+
+
 def test_rebuild_matches_live_graph(store: KBStore) -> None:
     _seed(store)
     live = prov.build_graph(store).edges

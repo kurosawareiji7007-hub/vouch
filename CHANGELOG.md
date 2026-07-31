@@ -45,6 +45,9 @@ All notable changes to vouch are documented here. Format follows
   artifact the caller could not already retrieve, and it touches no write path.
 
 ### Fixed
+- **provenance graph drops archived page EMBEDS** (#701):
+  `build_graph` walked every on-disk page, so archived topics stayed in the
+  DAG for graph consumers. Archived pages are skipped; draft/active unchanged.
 - **`vouch stats` / `kb.stats` no longer crash on one corrupt `decided/*.yaml`**:
   `_list_decided` parsed every decided proposal strictly, so a single bad file
   aborted `review_summary` / `collect_stats`. It now uses `_load_or_skip` —

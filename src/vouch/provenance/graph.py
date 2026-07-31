@@ -12,7 +12,7 @@ from collections import deque
 from collections.abc import Iterable
 
 from .. import audit
-from ..models import ProposalKind, ProposalStatus
+from ..models import PageStatus, ProposalKind, ProposalStatus
 from ..storage import ArtifactNotFoundError, KBStore
 from .model import Edge, EdgeKind, NodeKind, sort_edges
 
@@ -221,6 +221,10 @@ def build_graph(store: KBStore) -> ProvGraph:
             add(c.id, eid, EdgeKind.APPROVED_BY, ts, sess)
 
     for p in store.list_pages():
+        # archived pages are out of the live set (same as neighbors/wiki) —
+        # keeping EMBEDS edges would undo archive for graph consumers (#701).
+        if p.status is PageStatus.ARCHIVED:
+            continue
         node_kinds[p.id] = NodeKind.PAGE
         p_ts = p.updated_at.isoformat()
         for cid in p.claims:
