@@ -161,7 +161,8 @@ All notable changes to vouch are documented here. Format follows
   validated refs. Deleting a cited claim succeeded (empty gate), then
   `set_goal_status` crashed with `ValueError` from `_validate_goal_refs`.
   Goals now block delete, appear in the cascade plan, and are unlinked
-  via `goal.cascade_unlink` on approve.
+  via `lifecycle.cascade_unlink_goal_refs` (`goal.cascade_unlink` audit)
+  on approve — the same single-writer path as status moves.
 - **`extract` no longer fractures file paths/URLs into auto-approved
   garbage claims** (#702): the sentence segmenter only skipped a `.` as a
   boundary when it was flanked by digits on both sides (decimals/versions

@@ -1506,24 +1506,19 @@ def _apply_cascade_claim(
 def _apply_cascade_goal(
     store: KBStore, step: dict[str, Any], step_id: str, *, actor: str
 ) -> bool:
-    try:
-        goal = store.get_goal(step_id)
-    except ArtifactNotFoundError:
-        return False
-    claims = [c for c in step.get("unlink_claims") or [] if c in goal.claims]
-    entities = [e for e in step.get("unlink_entities") or [] if e in goal.entities]
-    if not claims and not entities:
-        return False
-    goal.claims = [c for c in goal.claims if c not in claims]
-    goal.entities = [e for e in goal.entities if e not in entities]
-    goal.updated_at = datetime.now(UTC)
-    store.update_goal(goal)
-    audit.log_event(
-        store.kb_dir, event="goal.cascade_unlink", actor=actor,
-        object_ids=[goal.id], data={"claims": claims, "entities": entities},
-        reversible=False,
+    # Lazy import: lifecycle imports strip_claim_markers from this module.
+    from . import lifecycle as life
+
+    return (
+        life.cascade_unlink_goal_refs(
+            store,
+            step_id,
+            unlink_claims=list(step.get("unlink_claims") or []),
+            unlink_entities=list(step.get("unlink_entities") or []),
+            actor=actor,
+        )
+        is not None
     )
-    return True
 
 
 def _apply_cascade(
